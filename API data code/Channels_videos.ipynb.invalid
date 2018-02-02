@@ -1,0 +1,133 @@
+{
+ "cells": [
+  {
+   "cell_type": "code",
+   "execution_count": 8,
+   "metadata": {
+    "collapsed": true
+   },
+   "outputs": [],
+   "source": [
+    "import os\n",
+    "import datetime\n",
+    "import pandas as pd\n",
+    "import csv\n",
+    "import json\n",
+    "import time\n",
+    "\n",
+    "from apiclient.discovery import build\n",
+    "from apiclient.errors import HttpError\n",
+    "from oauth2client.tools import argparser\n",
+    "\n",
+    "DEVELOPER_KEY= os.environ.get('API_CODE')\n",
+    "YOUTUBE_API_SERVICE_NAME = \"youtube\"\n",
+    "YOUTUBE_API_VERSION = \"v3\"\n",
+    "service= build(YOUTUBE_API_SERVICE_NAME, YOUTUBE_API_VERSION, developerKey=DEVELOPER_KEY)"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 1,
+   "metadata": {
+    "collapsed": true
+   },
+   "outputs": [],
+   "source": [
+    "# read file column 1\n",
+    "# leer nombre del canal, grabar id del canal\n",
+    "# leer id de lista de reproducción uploads=[contentDetails][relatedPlaylists][uploads]  \n",
+    "# use the string as search keyID for\n",
+    "#        channel_videos = serv.playlistItems().list(\n",
+    "#        playlistId=playlist_id\n",
+    ",\n",
+    "#        part=\"id, snippet,contentDetails,status\",\n",
+    "#        maxResults=50,\n",
+    "#        pageToken=pageToken\n",
+    "#   ).execute()\n",
+    "# recorrer en un bucle hasta que pageToken no exista cuando no exista continuar\n",
+    "# leer columna siguiente\n"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 9,
+   "metadata": {
+    "collapsed": true
+   },
+   "outputs": [],
+   "source": [
+    "def video_list(dt, dt2, pageToken, channelId):\n",
+    "    videoList=service.search().list(\n",
+    "        part=\"id,snippet\",\n",
+    "        channelId=channelId,\n",
+    "        maxResults=50,\n",
+    "        order=\"date\",\n",
+    "        type=\"video\",\n",
+    "        publishedAfter=dt,\n",
+    "        publishedBefore=dt2,\n",
+    "        pageToken=pageToken\n",
+    "    ).execute()\n",
+    "    \n",
+    "    return videoList"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 16,
+   "metadata": {
+    "collapsed": true
+   },
+   "outputs": [],
+   "source": [
+    "def video_data(video_id):\n",
+    "    videoData=service.videos().list(\n",
+    "        part=\"id,snippet,statistics,contentDetails,status,topicDetails, recordingDetails\",\n",
+    "        id=video_id\n",
+    "    ).execute()\n",
+    "    \n",
+    "    return videoData"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 23,
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "def videos_by_channel(channelId,fname,fname2):\n",
+    "    for year in range (2007,2018):\n",
+    "        pageToken=\"\"\n",
+    "        d=datetime.datetime(year,int(1),1,0,0).isoformat()+'Z'\n",
+    "        d2=datetime.datetime(year,int(12),31,0,0).isoformat()+'Z'\n",
+    "        while (pageToken!='error'):\n",
+    "            videoList=video_list(d,d2,pageToken,channelId)\n",
+    "            \n",
+    "            #save list of videos if the list is not empty\n",
+    "            if (videoList.get(\"items\",[])!=[]):\n",
+    "                \n",
+    "                with open(fname,'a')as f:\n",
+    "                    out=json.dumps(videoList)\n",
+    "                    f.write(out + '\\n')\n",
+    "                    \n",
+    "                for video in videoList.get(\"items\",[]):\n",
+    "                    videoData=video_data(video[\"id\"][\"videoId\"])\n",
+    "                    if (videoData.get(\"items\",[])!=[]):\n",
+    "                        with open(fname2,'a')as f2:\n",
+    "                            out2=json.dumps(videoData)\n",
+    "                            f2.write(out2 + '\\n')\n",
+    "                        #time.sleep(1)\n",
+    "            try:\n",
+    "                pageToken=videoList['nextPageToken']\n",
+    "            except KeyError as e:\n",
+    "                pageToken='error'\n",
+    "\n",
+    "        time.sleep(1)   \n"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 24,
+   "metadata": {},
+   "outputs": [
+    {
+     
